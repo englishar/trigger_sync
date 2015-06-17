@@ -1,0 +1,9 @@
+string  event_name
+time    local_request_time
+string  device_clock_id
+time    device_time
+string  local_clock_id
+time    local_receive_time
+time    corrected_local_time
+float64 clock_skew
+duration    min_transport_delay

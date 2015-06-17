@@ -1,0 +1,20 @@
+<launch>
+
+   <node name="pps_trigger_user_timestamps" pkg="time_sync" type="pps_trigger" output="screen">
+
+	<param name="rising_edge_event_id"    value="none"/>
+	<param name="falling_edge_event_id"   value="trigger"/>
+	<param name="device_clock_id"         value="trigger_clock_user"/>
+	<param name="local_clock_id"          value="local_clock"/>
+	<param name="publish_rising_edge"     value="false"/>
+	<param name="publish_falling_edge"    value="true"/>
+	<param name="trigger_is_clock_source" value="true"/>
+        <param name="use_user_level_timestamps" value="true"/>
+
+          <!-- Parameters for time synchronisation library TimeSync -->
+          <param name="correct_timestamps"       type="bool"    value="true" />
+          <param name="timesync_publish_events"  type="bool"    value="true" />
+          <param name="timesync_match_events"    type="bool"    value="false" />
+          <param name="timesync_switch_period"   type="double"  value="120.0" />
+   </node>
+</launch>

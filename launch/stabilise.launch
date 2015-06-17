@@ -1,0 +1,23 @@
+<launch>
+
+   <node name="stabilise" pkg="time_sync" type="stabilise_camera" output="screen">
+
+	<param name="average"   value="false"/>
+	<param name="image"   value="/ptgrey_stereo/left/image_raw"/>
+	<param name="compressed"   value="true"/>
+
+
+	<param name="imu_topic"   value="/vectornav/imu"/>
+	<param name="camera_info_topic"   value="camera_info_topic"/>
+	<param name="scale"   value="0.8"/>
+	<param name="average"   value="false"/>
+	<param name="fix_yaw"   value="true"/>
+	<param name="homography"   value="false"/>
+	<param name="find_horizon"   value="true"/>
+	<param name="chop"   value="true"/>
+
+
+
+
+   </node>
+</launch>
