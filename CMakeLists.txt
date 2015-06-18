@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   image_geometry
   message_filters
+  camera_info_manager
 )
 
 ## Generate messages in the 'msg' folder
@@ -77,16 +78,21 @@ add_library(trigger_sync_lib
 target_link_libraries(trigger_sync_lib ${catkin_LIBRARIES})
 add_dependencies(trigger_sync_lib trigger_sync_generate_messages_cpp)
 
-
 ## Declare a cpp executable
-add_executable(pps_trigger    src/pps_trigger.cpp)
-add_executable(pps_config     src/pps_config.c)
+add_executable(pps_trigger             src/pps_trigger.cpp)
+add_executable(pps_config              src/pps_config.c)
+add_executable(fake_camera             src/demo/fake_camera.cpp)
+add_executable(fake_trigger_line       src/demo/fake_trigger_line.cpp)
 add_executable(local_clock_syncroniser src/local_clock_syncroniser_node.cpp)
-add_executable(test_trigger_sync src/test_trigger_sync.cpp)
-add_executable(stabilise_camera src/stabilise_camera.cpp)
+add_executable(test_trigger_sync       src/test_trigger_sync.cpp)
+add_executable(stabilise_camera        src/demo/stabilise_camera.cpp)
 
 # Link executables to libraries
-target_link_libraries(pps_trigger ${catkin_LIBRARIES} trigger_sync_lib)
+target_link_libraries(pps_trigger       ${catkin_LIBRARIES} trigger_sync_lib)
+target_link_libraries(fake_trigger_line ${catkin_LIBRARIES})
+
+
+target_link_libraries(fake_camera ${catkin_LIBRARIES} trigger_sync_lib)
 target_link_libraries(test_trigger_sync ${catkin_LIBRARIES} trigger_sync_lib)
 target_link_libraries(local_clock_syncroniser ${catkin_LIBRARIES} trigger_sync_lib)
 target_link_libraries(stabilise_camera ${catkin_LIBRARIES})

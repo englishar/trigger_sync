@@ -44,6 +44,7 @@ class TriggerSync
 public:
 
   TriggerSync(void);
+  // Add extra option here for just device_clock_id
   TriggerSync(std::string device_clock_id, std::string local_clock_id);
   TriggerSync(std::string device_clock_id, std::string local_clock_id, std::string trigger_event_id);
   TriggerSync(const std::string trigger_name);
