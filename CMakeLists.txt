@@ -8,6 +8,7 @@ project(trigger_sync)
 find_package(catkin REQUIRED COMPONENTS
   std_msgs
   roscpp
+  rospy
   nav_msgs
   sensor_msgs
   tf
@@ -82,6 +83,7 @@ add_dependencies(trigger_sync_lib trigger_sync_generate_messages_cpp)
 add_executable(pps_trigger             src/pps_trigger.cpp)
 add_executable(pps_config              src/pps_config.c)
 add_executable(fake_camera             src/demo/fake_camera.cpp)
+add_executable(fake_imu                src/demo/fake_IMU.cpp)
 add_executable(fake_trigger_line       src/demo/fake_trigger_line.cpp)
 add_executable(local_clock_syncroniser src/local_clock_syncroniser_node.cpp)
 add_executable(test_trigger_sync       src/test_trigger_sync.cpp)
@@ -93,9 +95,16 @@ target_link_libraries(fake_trigger_line ${catkin_LIBRARIES})
 
 
 target_link_libraries(fake_camera ${catkin_LIBRARIES} trigger_sync_lib)
+target_link_libraries(fake_imu ${catkin_LIBRARIES} trigger_sync_lib)
+
 target_link_libraries(test_trigger_sync ${catkin_LIBRARIES} trigger_sync_lib)
 target_link_libraries(local_clock_syncroniser ${catkin_LIBRARIES} trigger_sync_lib)
 target_link_libraries(stabilise_camera ${catkin_LIBRARIES})
+
+
+install(PROGRAMS src/plot_clock.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 #############
 ## Install ##

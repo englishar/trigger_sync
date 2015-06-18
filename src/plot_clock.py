@@ -1,7 +1,7 @@
  #!/usr/bin/env python
 
 
-from time_sync.msg import Event
+from trigger_sync.msg import Event
 import rospy
 import sys, random
 from PyQt4.QtCore import *
