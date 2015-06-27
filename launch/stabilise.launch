@@ -1,29 +1,27 @@
 <launch>
 
    <param name="roll_frequency"  value="1.0" />
-   <param name="ptich_frequency" value="5.0"/>
-   <param name="yaw_frequency"   value="2.0"/>
-   <param name="roll_amplitude"  value="0.035"/>
-   <param name="ptich_amplitude" value="0.035"/>
-   <param name="yaw_amplitude"   value="0.035"/>
+   <param name="ptich_frequency" value="3.3"/>
+   <param name="yaw_frequency"   value="1.2"/>
+   <param name="roll_amplitude"  value="0.06"/>
+   <param name="ptich_amplitude" value="0.06"/>
+   <param name="yaw_amplitude"   value="0.06"/>
 
    <node name="fake_trigger_line" pkg="trigger_sync" type="fake_trigger_line" output="screen">
-	<param name="trigger_frequency" value="10.0" />
+	<param name="trigger_frequency" value="5.0" />
    </node>
 
 
    <node name="stabilise" pkg="trigger_sync" type="stabilise_camera" output="screen">
-	<param name="image"   value="/image_raw"/>
-	<param name="compressed"   value="false"/>
-	<param name="average"   value="false"/>
-	<param name="imu_topic"   value="/imu"/>
+	<param name="image"               value="/image_raw"/>
+	<param name="compressed"          value="false"/>
+	<param name="average"             value="false"/>
+	<param name="imu_topic"           value="/imu"/>
 	<param name="camera_info_topic"   value="/camera_info"/>
-	<param name="fix_yaw"   value="true"/>
-	<param name="homography"   value="false"/>
-	<param name="find_horizon"   value="false"/>
-	<param name="chop"   value="false"/>
-
-	
+	<param name="fix_yaw"             value="true"/>
+	<param name="homography"          value="false"/>
+	<param name="find_horizon"        value="false"/>
+	<param name="chop"                value="false"/>
 
    </node>
 
@@ -31,13 +29,18 @@
 
     	<param name="use_triggersync" value="true"/>
 
-	<param name="camera_communication_delay_min"    value="0.040"/>
-        <param name="camera_communication_delay_lambda" value="10.0" />
+	<param name="camera_communication_delay_min"    value="0.020"/>
+        <param name="camera_communication_delay_lambda" value="0.0001" />
         <param name="camera_clock_skew"                 value="1.0"/>
    </node>
 
    <node name="fake_imu" pkg="trigger_sync" type="fake_imu" output="screen">
     	<param name="use_triggersync" value="true" />
+
+	<param name="imu_communication_delay_min"    value="0.0020"/>
+        <param name="imu_communication_delay_lambda" value="0.0000" />
+        <param name="imu_clock_skew"                 value="1.0"/>
+
    </node>
 
 
