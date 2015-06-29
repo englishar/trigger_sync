@@ -8,7 +8,7 @@
    <param name="yaw_amplitude"   value="0.06"/>
 
    <node name="fake_trigger_line" pkg="trigger_sync" type="fake_trigger_line" output="screen">
-	<param name="trigger_frequency" value="5.0" />
+	<param name="trigger_frequency" value="10.0" />
    </node>
 
 
@@ -30,7 +30,7 @@
     	<param name="use_triggersync" value="true"/>
 
 	<param name="camera_communication_delay_min"    value="0.020"/>
-        <param name="camera_communication_delay_lambda" value="0.0001" />
+        <param name="camera_communication_delay_lambda" value="0.0000" />
         <param name="camera_clock_skew"                 value="1.0"/>
    </node>
 

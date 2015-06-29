@@ -47,7 +47,7 @@ TriggerSync::TriggerSync(std::string device_clock_id, std::string local_clock_id
     // Advertise event topic
     ros::NodeHandle nh;
     event_pub_ = nh.advertise<trigger_sync::Event>("/event", 10);
-//    event_pub_matched_ = nh.advertise<trigger_sync::Event>("/event_matched",10);
+    event_pub_matched_ = nh.advertise<trigger_sync::Event>("/event_matched",10);
 
 }
 
@@ -71,7 +71,7 @@ TriggerSync::TriggerSync(std::string device_clock_id, std::string recv_clock_id,
 
     // Advertise /event topic
     event_pub_ = nh.advertise<trigger_sync::Event>("/event", 10);
-//    event_pub_matched_ = nh.advertise<trigger_sync::Event>("/event_matched",10);    // Probably get rid of this. Not really needed
+    event_pub_matched_ = nh.advertise<trigger_sync::Event>("/event_matched",10);
 
     // Subscibe to /event topic
     trigger_sub_.reset(new ros::Subscriber(nh.subscribe("/event", 10, &TriggerSync::trigger_msg_cb_, this)));
@@ -116,7 +116,7 @@ ros::Time TriggerSync::updateTwoWay(ros::Time local_request_time,ros::Time devic
 
 
     // Correct timestamp
-    ros::Time corrected_local_time = correctReceiveTime(event_msg);
+    ros::Time corrected_local_time = correctLocalReceiveTime(event_msg);
 
     // Publish the event (for other processes to use);
     if (publish_events_)
@@ -136,7 +136,7 @@ ros::Time TriggerSync::updateTwoWay(ros::Time local_request_time,ros::Time devic
 
     // Add message to estimators
     ROS_DEBUG("Calling updateMsg");
-    updateMsg(event_msg);
+    addUnorderedEventToEstimators(event_msg);
 
 
     return corrected_local_time;
@@ -191,7 +191,7 @@ void TriggerSync::init() {
     two_way_clock_sync_.reset(new TICSync::SwitchingTwoWayClockSync<int64_t>(switching_time *1e9 ));
 
     trigger_event_id_ = "";
-    buff_size_ = 5;
+    buff_size_ = 20;             // TODO: Make this value configurable.
 
     estimator_min_time_ = ros::Time(0);
 
@@ -240,7 +240,6 @@ void TriggerSync::addMsgToApproximateSync(const trigger_sync::Event::ConstPtr& e
         return;
     }
 
-
     // Queue 0 is for all the local packets.
     // If queue is 0 then we need to add  the event to all the available syncronisers
     if (queue == LOCAL_QUEUE)
@@ -266,7 +265,7 @@ void TriggerSync::addMsgToApproximateSync(const trigger_sync::Event::ConstPtr& e
         if ( message_matching_map.count(event_msg->device_clock_id) == 0)
         {
             ROS_DEBUG_STREAM("Creating aproximate syncroniser for device_clock_id " << event_msg->device_clock_id );
-            message_matching_map[event_msg->device_clock_id].reset(new Sync2(10));
+            message_matching_map[event_msg->device_clock_id].reset(new Sync2(20));
             message_matching_map[event_msg->device_clock_id]->registerCallback(boost::bind(&TriggerSync::trigger_match_cb_, this, _1, _2));
         }
 
@@ -309,17 +308,17 @@ void TriggerSync::trigger_match_cb_(const trigger_sync::EventStampedConstPtr& lo
         static double min_receive_delta = std::numeric_limits<double>::max();
 
         min_receive_delta = std::min(min_receive_delta,(local_message->event.local_receive_time - remote_message->event.local_receive_time).toSec()*1000.0 );
-        ROS_INFO_STREAM(" Match( Match dela= "  << NUM_FORMAT <<(local_message->header.stamp - remote_message->header.stamp).toSec()*1000.0
-                        << "ms, receive time delta = " << NUM_FORMAT  <<(local_message->event.local_receive_time - remote_message->event.local_receive_time).toSec()*1000.0
-                        << "ms ) - add to buffer - " << min_receive_delta << "(" << 500/min_receive_delta
-                        << "Hz" );
+//        ROS_INFO_STREAM(" Match( Match dela= "  << NUM_FORMAT <<(local_message->header.stamp - remote_message->header.stamp).toSec()*1000.0
+//                        << "ms, receive time delta = " << NUM_FORMAT  <<(local_message->event.local_receive_time - remote_message->event.local_receive_time).toSec()*1000.0
+//                        << "ms ) - add to buffer - " << min_receive_delta << "(" << 500/min_receive_delta
+//                        << "Hz" );
 
         // TODO: should only do this if we are sure its a good match - perhaps wait until stable
-        updateMsg(event_msg);
+        addUnorderedEventToEstimators(event_msg);
     } else {
-        ROS_INFO_STREAM(" Match( Match dela= " << NUM_FORMAT << (local_message->header.stamp - remote_message->header.stamp).toSec()*1000.0
-                        << "ms, receive time delta = " << NUM_FORMAT  <<(local_message->event.local_receive_time - remote_message->event.local_receive_time).toSec()*1000.0
-                        << "ms ) - not adding to buffer");
+//        ROS_INFO_STREAM(" Match( Match dela= " << NUM_FORMAT << (local_message->header.stamp - remote_message->header.stamp).toSec()*1000.0
+//                        << "ms, receive time delta = " << NUM_FORMAT  <<(local_message->event.local_receive_time - remote_message->event.local_receive_time).toSec()*1000.0
+//                        << "ms ) - not adding to buffer");
     }
 
 
@@ -334,7 +333,7 @@ void TriggerSync::trigger_match_cb_(const trigger_sync::EventStampedConstPtr& lo
 
 
 
-ros::Time TriggerSync::correctReceiveTime(trigger_sync::Event& event_msg)
+ros::Time TriggerSync::correctLocalReceiveTime(trigger_sync::Event& event_msg)
 {
 
     // TODO: lock mutex?
@@ -383,7 +382,7 @@ ros::Time TriggerSync::correctReceiveTime(trigger_sync::Event& event_msg)
 
 
 // Allows out of order adding of events to the estimaors
-void TriggerSync::updateMsg(trigger_sync::Event & event_msg)
+void TriggerSync::addUnorderedEventToEstimators(trigger_sync::Event & event_msg)
 {
     // Check that our clock ID's are for our estimator
     if  (event_msg.device_clock_id != device_clock_id_ || event_msg.local_clock_id != local_clock_id_  )
@@ -414,16 +413,37 @@ void TriggerSync::updateMsg(trigger_sync::Event & event_msg)
 // Add message to a queue to allow out of order addition
 // (Note it is the device time that must increase each time. Local time may go forwards or backwards)
 // TODO: change this to a separate class for separate testing
+/**
+ * @brief TriggerSync::bufferMsgs
+ * Fixed size buffer for re-ordering event in chronological order
+ *
+ * reorderEventBuffer.addEvent();
+ *
+ * Our clock estimators require events to be added in chronological order (according to their device time) though local time
+ * may go forwards or backwards. This function stores recent events in a fixed size buffer and once the buffer is full returns the earliest
+ * event.
+ *
+ * If the buffer contains an event with a device time identical to the current event then the local_request_time
+ * and local_recieve_time are modified to contain the timestames with highest quality timestamps (lowest commuinication delay). *
+ *
+ * @param event_msg event to add to the buffer. event_msg is modified to contain the most recent event.
+ * @return Returns FALSE if buffer is still filling. TRUE if event_msg is the most recent event.
+ */
 bool TriggerSync::bufferMsgs(trigger_sync::Event& event_msg)
 {
 
-    if ( event_msg.device_time <= estimator_min_time_) // Todo set estimator min time at some point
+    if (events_.size()  == 0 )
     {
-        ROS_WARN_STREAM("Cant add packet to estimator. device_time buffer. Consider increaseing buff_size. " << estimator_min_time_ <<  " <= " << event_msg.device_time);
+        estimator_min_time_ = event_msg.device_time ;
+    }
+    else if ( event_msg.device_time <= estimator_min_time_) // TODO set estimator min time at some point
+    {
+        ROS_WARN_STREAM("Cant add packet event buffer. Consider increaseing buff_size_. " << estimator_min_time_ <<  " <= " << event_msg.device_time);
         return false;
     }
 
     // Check through vector for duplicate device times (since TICSYNC needs an ever increaseing device time)
+    // While also finding the earliest event.
     int pos = -1;  // Position of the earliest event
     ros::Time earliest_local_time = event_msg.device_time;
     for(uint i = 0; i < events_.size(); i++)
@@ -447,7 +467,7 @@ bool TriggerSync::bufferMsgs(trigger_sync::Event& event_msg)
             }
             else if (event_msg.local_request_time != UNKNOWN_TIME)
             {
-                // Both request times are known - take the latest(larger)
+                // Both request times are known - take the latest (largest) since it had a smaller communication delay
                 events_[i].local_request_time = std::max(events_[i].local_request_time, event_msg.local_request_time);
             }
 
@@ -460,14 +480,17 @@ bool TriggerSync::bufferMsgs(trigger_sync::Event& event_msg)
             }
             else if (event_msg.local_receive_time != UNKNOWN_TIME)
             {
-                // Both recieve times are known, take the earliest (smallest)
+                // Both recieve times are known, take the earliest (smallest) since it had a smaller communication delay
                 events_[i].local_receive_time = std::min(events_[i].local_receive_time, event_msg.local_receive_time );
             }
+
+            // No need to return an event, since we didn't add anything to the buffer but simply updated the timestamps of the duplicate event.
             return false;
         }
     }
 
 
+    // If we got to here then the event is unique. Add it to the buffer.
     if (events_.size() < buff_size_ )
     {
         events_.push_back(event_msg);
@@ -476,13 +499,18 @@ bool TriggerSync::bufferMsgs(trigger_sync::Event& event_msg)
     } else if (pos == -1)
     {
         ROS_DEBUG("This message is already the earliest in the buffer");
+         estimator_min_time_ = event_msg.device_time;
         return true;
     } else  {
         ROS_DEBUG_STREAM("Swapping out message in position  "  << pos);
+
+        // Swap current message and earliest message in the buffer and reutrn the earliest message
         trigger_sync::Event tmp_msg;
         tmp_msg = events_[pos];
         events_[pos] = event_msg;
         event_msg = tmp_msg;
+
+        estimator_min_time_ = event_msg.device_time;        // Remember the timestamp for this message so we can later reject messages earier than this.
         return true;
     }
 
@@ -493,7 +521,7 @@ bool TriggerSync::bufferMsgs(trigger_sync::Event& event_msg)
 void TriggerSync::addMsgToEstimators(trigger_sync::Event add_msg)
 {
 
-//    event_pub_matched_.publish(add_msg);
+    event_pub_matched_.publish(add_msg);
 
     if (add_msg.device_time == UNKNOWN_TIME)
     {
@@ -527,7 +555,7 @@ void TriggerSync::addMsgToEstimators(trigger_sync::Event add_msg)
 
     trigger_sync::Event event_msg = add_msg;
 
-    correctReceiveTime(event_msg);
+    correctLocalReceiveTime(event_msg);
 
     // Some basic clock upset detection
     if (       event_msg.corrected_local_time  <  event_msg.local_request_time

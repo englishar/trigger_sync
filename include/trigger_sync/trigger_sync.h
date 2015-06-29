@@ -39,25 +39,37 @@ class TriggerSync
 {
 public:
 
-    TriggerSync(void);   // Get rid of this one?
     // TODO: Add extra option here for just device_clock_id
+
+    TriggerSync(void);   // Get rid of this one?
     TriggerSync(std::string device_clock_id, std::string local_clock_id);
     TriggerSync(std::string device_clock_id, std::string local_clock_id, std::string trigger_event_id);
     TriggerSync(const std::string trigger_name);
 
-    // For one way clock sync
+
     /**
      * @brief update
-     * @param device_time
-     * @param local_time
-     * @return
+     *
+     * For one way clock sync
+     *
+     * @param device_time Time at sensor
+     * @param local_time  Local receive time
+     * @return Corrected local recieve time with communication delay removed
      */
     ros::Time update(
-            ros::Time device_time,  //  Time at time server or sensor
+            ros::Time device_time,
             ros::Time local_time    //
             );
 
     // One way clock update and publish/subscribe to event_id
+    // don't really need this one
+    /**
+     * @brief update
+     * @param device_time
+     * @param local_time
+     * @param event_id
+     * @return
+     */
     ros::Time update(
             ros::Time device_time,  // Time at sensor
             ros::Time local_time,   // Local recieve time
@@ -65,7 +77,6 @@ public:
             );
 
     // For two way clock sync
-
     /**
      * @brief updateTwoWay
      * @param local_request_time
@@ -87,31 +98,43 @@ public:
             std::string event_id
             );
 
+    /**
+     * @brief deviceTimeToClientTime
+     *
+     * Convert without adding event to
+     * @param device_time
+     * @return
+     */
     ros::Time deviceTimeToClientTime(
             ros::Time device_time
             );
 
-    ros::Time convertTime(ros::Time from_time, std::string from_clock_id, std::string to_clock_id ); // Will currently throw an exception. TODO fix
+    //    ros::Time convertTime(ros::Time from_time, std::string from_clock_id, std::string to_clock_id ); // TODO: implement
 
 
     void setSwitchPeriod(ros::Duration);
-    void addMsgToEstimators(trigger_sync::Event add_msg);
-    void addMsgToApproximateSync(const trigger_sync::Event::ConstPtr& event_msg , int queue);
     void setPublishEvents(bool);
     void setMatchEvents(bool);
-    double skew();
-    bool  isStable();
 
     static const ros::Time UNKNOWN_TIME;
 
 
 
+    double skew();
+    bool  isStable();
+
 
 private:
 
-    ros::Time correctReceiveTime(trigger_sync::Event& event_msg);
+
+
+
+    void addMsgToEstimators(trigger_sync::Event add_msg);
+    void addMsgToApproximateSync(const trigger_sync::Event::ConstPtr& event_msg , int queue);
+
+    ros::Time correctLocalReceiveTime(trigger_sync::Event& event_msg);
     bool bufferMsgs(trigger_sync::Event& event_msg);
-    void updateMsg(trigger_sync::Event & event_msg);
+    void addUnorderedEventToEstimators(trigger_sync::Event & event_msg);
 
     void init();
 
@@ -123,7 +146,7 @@ private:
     uint buff_size_;                  // Size of buffer for re-ordering events
 
     ros::Publisher event_pub_;
-//    ros::Publisher event_pub_matched_;
+    ros::Publisher event_pub_matched_;   // Publish the matched events on a different topic (for visualisation purposes only)
 
     void trigger_msg_cb_(const trigger_sync::Event::ConstPtr& trigger);
     void trigger_match_cb_(const trigger_sync::EventStampedConstPtr& p, const trigger_sync::EventStampedConstPtr& q);
@@ -135,7 +158,7 @@ private:
     std::string trigger_event_id_;                      // Do not change this after initialisation - its value is not protected by the mutex
     ros::CallbackQueue trigger_cb_queue_;               // Callback queue for /event messages
     boost::shared_ptr<ros::Subscriber> trigger_sub_;    // Subscriber for /event messages
-    boost::shared_ptr<ros::AsyncSpinner> trigger_spin_; //
+    boost::shared_ptr<ros::AsyncSpinner> trigger_spin_; // Asyncronous spinner to recieve /event messages in a separate thread (so the user doesn't need to callros::spin() ))
 
     boost::shared_ptr<TICSync::SwitchingOneWayClockSync<int64_t> > one_way_clock_sync_;
     boost::shared_ptr<TICSync::SwitchingTwoWayClockSync<int64_t> > two_way_clock_sync_;
